@@ -28,6 +28,8 @@ extern "C" {
  @since v0.99.5
  */
 unsigned long ccNextPOT( unsigned long value );
+    
+const char *ccLastStrStr(const char *haystack, const char *needle);
 
 #ifdef __cplusplus
 }

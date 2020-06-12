@@ -29,6 +29,7 @@
 #import "CCGLProgram.h"
 #import "ccGLStateCache.h"
 #import "ccMacros.h"
+#import "ccUtils.h"
 #import "Support/CCFileUtils.h"
 #import "Support/uthash.h"
 #import "Support/OpenGL_Internal.h"
@@ -143,32 +144,48 @@ typedef void (*GLLogFunction) (GLuint program,
 
 - (BOOL)compileShader:(GLuint *)shader type:(GLenum)type byteArray:(const GLchar *)source
 {
-    GLint status;
+	GLint status;
 
-    if (!source)
-        return NO;
-		
-		const GLchar *sources[] = {
+	if (!source)
+		return NO;
+
+	const GLchar *lastExtension = ccLastStrStr(source, "#extension");
+	GLchar *extensions = NULL;
+	if (lastExtension)
+	{
+		const GLchar *sourceOld = source;
+		source = strstr(lastExtension, "\n");
+		size_t copySize = (size_t)(source - sourceOld) + 1;
+		extensions = (GLchar *)malloc(copySize + 1);
+		strncpy(extensions, sourceOld, copySize);
+		extensions[copySize] = '\0';
+	}
+
+	const GLchar *sources[] = {
+		extensions ? extensions : "\n",
 #ifdef __CC_PLATFORM_IOS
-			(type == GL_VERTEX_SHADER ? "precision highp float;\n" : "precision mediump float;\n"),
+		(type == GL_VERTEX_SHADER ? "precision highp float;\n" : "precision mediump float;\n"),
 #endif
-			"uniform mat4 CC_PMatrix;\n"
-			"uniform mat4 CC_MVMatrix;\n"
-			"uniform mat4 CC_MVPMatrix;\n"
-			"uniform vec4 CC_Time;\n"
-			"uniform vec4 CC_SinTime;\n"
-			"uniform vec4 CC_CosTime;\n"
-			"uniform vec4 CC_Random01;\n"
-			"//CC INCLUDES END\n\n",
-			source,
-		};
-		
-    *shader = glCreateShader(type);
-    glShaderSource(*shader, sizeof(sources)/sizeof(*sources), sources, NULL);
-    glCompileShader(*shader);
-	
-    glGetShaderiv(*shader, GL_COMPILE_STATUS, &status);
-	
+		"uniform mat4 CC_PMatrix;\n"
+		"uniform mat4 CC_MVMatrix;\n"
+		"uniform mat4 CC_MVPMatrix;\n"
+		"uniform vec4 CC_Time;\n"
+		"uniform vec4 CC_SinTime;\n"
+		"uniform vec4 CC_CosTime;\n"
+		"uniform vec4 CC_Random01;\n"
+		"//CC INCLUDES END\n\n",
+		source,
+	};
+
+	*shader = glCreateShader(type);
+	glShaderSource(*shader, sizeof(sources)/sizeof(*sources), sources, NULL);
+	glCompileShader(*shader);
+
+	glGetShaderiv(*shader, GL_COMPILE_STATUS, &status);
+
+	if (extensions)
+		free(extensions);
+
 	if( ! status ) {
 		GLsizei length;
 		glGetShaderiv(*shader, GL_SHADER_SOURCE_LENGTH, &length);
